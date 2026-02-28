@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import inspect
 import time
-from typing import Any, Awaitable, Callable, Self
+from collections.abc import Awaitable, Callable
+from typing import Any, Self
 
 import psycopg
 
 from pgleaderlock._logging import get_logger
-from pgleaderlock.errors import ConnectionError, LockError, ShutdownError
+from pgleaderlock.errors import ConnectionError, LockError
 from pgleaderlock.models import (
     Callback,
     ErrorCallback,
@@ -144,12 +146,10 @@ class LeaderLock:
             return
         try:
             await asyncio.wait_for(asyncio.shield(self._task), timeout=timeout_s)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             self._task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._task
-            except asyncio.CancelledError:
-                pass
             await self._close_conn()
             if self._state != LockState.STOPPED:
                 await self._transition(LockState.STOPPED)
@@ -174,7 +174,7 @@ class LeaderLock:
 
         try:
             await asyncio.wait_for(_wait_release(), timeout=timeout_s)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             self._log.warning("step_down_timeout_force_close")
             await self._close_conn()
 
@@ -182,7 +182,7 @@ class LeaderLock:
         try:
             await asyncio.wait_for(self._leadership_event.wait(), timeout=timeout_s)
             return True
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return False
 
     # ------------------------------------------------------------------
@@ -208,10 +208,8 @@ class LeaderLock:
 
     async def _close_conn(self) -> None:
         if self._conn is not None:
-            try:
+            with contextlib.suppress(Exception):
                 await self._conn.close()
-            except Exception:
-                pass
             self._conn = None
 
     # ------------------------------------------------------------------
@@ -220,17 +218,13 @@ class LeaderLock:
 
     async def _db_try_lock(self) -> bool:
         assert self._conn is not None
-        cur = await self._conn.execute(
-            "SELECT pg_try_advisory_lock(%s, %s)", (self._key1, self._key2)
-        )
+        cur = await self._conn.execute("SELECT pg_try_advisory_lock(%s, %s)", (self._key1, self._key2))
         row = await cur.fetchone()
         return bool(row and row[0])
 
     async def _db_unlock(self) -> bool:
         assert self._conn is not None
-        cur = await self._conn.execute(
-            "SELECT pg_advisory_unlock(%s, %s)", (self._key1, self._key2)
-        )
+        cur = await self._conn.execute("SELECT pg_advisory_unlock(%s, %s)", (self._key1, self._key2))
         row = await cur.fetchone()
         return bool(row and row[0])
 
@@ -257,9 +251,7 @@ class LeaderLock:
     # ------------------------------------------------------------------
 
     def _should_stop(self) -> bool:
-        return self._stop_event.is_set() or (
-            self._shutdown_event is not None and self._shutdown_event.is_set()
-        )
+        return self._stop_event.is_set() or (self._shutdown_event is not None and self._shutdown_event.is_set())
 
     # ------------------------------------------------------------------
     # Interruptible sleep
@@ -271,15 +263,13 @@ class LeaderLock:
         stop_fut = asyncio.ensure_future(self._stop_event.wait())
         try:
             await asyncio.wait_for(stop_fut, timeout=seconds)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             pass
         finally:
             if not stop_fut.done():
                 stop_fut.cancel()
-                try:
+                with contextlib.suppress(asyncio.CancelledError):
                     await stop_fut
-                except asyncio.CancelledError:
-                    pass
 
     # ------------------------------------------------------------------
     # Connect with retry
@@ -301,9 +291,7 @@ class LeaderLock:
                 delay = self._retry_strategy.next_delay_s(ctx)
                 self._log.warning("connect_failed", attempt=attempt, error=str(exc))
                 if delay is None:
-                    raise ConnectionError(
-                        f"Failed to connect after {attempt} attempts"
-                    ) from exc
+                    raise ConnectionError(f"Failed to connect after {attempt} attempts") from exc
                 await self._interruptible_sleep(delay)
 
     # ------------------------------------------------------------------
@@ -384,9 +372,7 @@ class LeaderLock:
                 last_error=None,
             )
             delay = self._retry_strategy.next_delay_s(ctx)
-            self._log.info(
-                "acquire_failed", attempt=self._retry_attempt, next_delay=delay
-            )
+            self._log.info("acquire_failed", attempt=self._retry_attempt, next_delay=delay)
             await self._fire(self._on_acquire_failed)
             if delay is None:
                 await self._transition(LockState.STOPPED)
@@ -406,15 +392,11 @@ class LeaderLock:
         else:
             ext_stop_task = None
 
-        done, pending = await asyncio.wait(
-            tasks, return_when=asyncio.FIRST_COMPLETED
-        )
+        done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
         for t in pending:
             t.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await t
-            except asyncio.CancelledError:
-                pass
 
         if stop_task in done or (ext_stop_task is not None and ext_stop_task in done):
             return  # main loop will handle stop

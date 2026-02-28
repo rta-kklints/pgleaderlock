@@ -1,6 +1,7 @@
 import random
 
 import pytest
+
 from pgleaderlock.models import RetryContext
 from pgleaderlock.retry import DecorrelatedJitter, ExponentialBackoff, FixedInterval, RetryStrategy
 

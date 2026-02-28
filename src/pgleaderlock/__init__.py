@@ -20,18 +20,18 @@ from pgleaderlock.retry import (
 )
 
 __all__ = [
-    "LeaderLock",
-    "LockState",
-    "RetryContext",
     "Callback",
-    "StateChangeCallback",
+    "ConnectionError",
+    "DecorrelatedJitter",
     "ErrorCallback",
-    "RetryStrategy",
     "ExponentialBackoff",
     "FixedInterval",
-    "DecorrelatedJitter",
-    "PgLeaderLockError",
-    "ConnectionError",
+    "LeaderLock",
     "LockError",
+    "LockState",
+    "PgLeaderLockError",
+    "RetryContext",
+    "RetryStrategy",
     "ShutdownError",
+    "StateChangeCallback",
 ]

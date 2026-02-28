@@ -29,6 +29,13 @@ markers = [
     "live: integration tests requiring a real PostgreSQL instance",
 ]
 
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
 [tool.coverage.run]
 source = ["pgleaderlock"]
 omit = ["src/pgleaderlock/cli.py"]
@@ -36,3 +43,9 @@ omit = ["src/pgleaderlock/cli.py"]
 [tool.coverage.report]
 fail_under = 90
 show_missing = true
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.5.1",
+    "ruff>=0.15.4",
+]

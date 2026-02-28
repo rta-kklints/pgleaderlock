@@ -3,15 +3,12 @@ from __future__ import annotations
 import asyncio
 import logging
 import signal
-import sys
 
 try:
     import click
     from loguru import logger
-except ImportError:
-    raise SystemExit(
-        "CLI dependencies not installed. Install with: pip install pgleaderlock[cli]"
-    )
+except ImportError as err:
+    raise SystemExit("CLI dependencies not installed. Install with: pip install pgleaderlock[cli]") from err
 
 from pgleaderlock import LeaderLock, LockState
 from pgleaderlock.retry import ExponentialBackoff

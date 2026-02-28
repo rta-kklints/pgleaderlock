@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 import asyncio
-from collections import deque
 
-import pytest
 from pgleaderlock.models import LockState, RetryContext
-from pgleaderlock.retry import FixedInterval, RetryStrategy
+from pgleaderlock.retry import FixedInterval
 
 
 class TestLeaderLockAcquireSuccess:
@@ -452,13 +450,9 @@ class TestLeaderLockDbOps:
         await lock.start()
         await lock.wait_for_leadership(timeout_s=2.0)
         # Check that the correct SQL was issued
-        lock_calls = [
-            (sql, params)
-            for sql, params in fake_conn.execute_calls
-            if "pg_try_advisory_lock" in sql
-        ]
+        lock_calls = [(sql, params) for sql, params in fake_conn.execute_calls if "pg_try_advisory_lock" in sql]
         assert len(lock_calls) >= 1
-        sql, params = lock_calls[0]
+        _sql, params = lock_calls[0]
         assert params == (1, 100)
         await lock.shutdown(timeout_s=2.0)
 
@@ -468,13 +462,9 @@ class TestLeaderLockDbOps:
         await lock.start()
         await lock.wait_for_leadership(timeout_s=2.0)
         await lock.shutdown(timeout_s=2.0)
-        unlock_calls = [
-            (sql, params)
-            for sql, params in fake_conn.execute_calls
-            if "pg_advisory_unlock" in sql
-        ]
+        unlock_calls = [(sql, params) for sql, params in fake_conn.execute_calls if "pg_advisory_unlock" in sql]
         assert len(unlock_calls) >= 1
-        sql, params = unlock_calls[0]
+        _sql, params = unlock_calls[0]
         assert params == (1, 100)
 
     async def test_db_health_sql(self, make_lock, fake_conn):
@@ -483,11 +473,7 @@ class TestLeaderLockDbOps:
         await lock.start()
         await lock.wait_for_leadership(timeout_s=2.0)
         await asyncio.sleep(0.05)  # let health check run
-        health_calls = [
-            (sql, params)
-            for sql, params in fake_conn.execute_calls
-            if sql == "SELECT 1"
-        ]
+        health_calls = [(sql, params) for sql, params in fake_conn.execute_calls if sql == "SELECT 1"]
         assert len(health_calls) >= 1
         await lock.shutdown(timeout_s=2.0)
 
@@ -555,7 +541,6 @@ class TestRetryReturnsNone:
     """When retry strategy returns None, acquisition stops."""
 
     async def test_retry_none_stops(self, make_lock, fake_conn):
-
         class LimitedRetry:
             def next_delay_s(self, ctx: RetryContext) -> float | None:
                 if ctx.attempt >= 2:

@@ -3,6 +3,7 @@
 Run with: pytest tests/live/ --pg-dsn postgresql://user:pass@host/db
 Or set PGLEADERLOCK_TEST_DSN environment variable.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -23,7 +24,9 @@ class TestLiveElection:
     async def test_single_lock_acquires(self, pg_dsn, lock_keys):
         k1, k2 = lock_keys
         lock = LeaderLock(
-            dsn=pg_dsn, key1=k1, key2=k2,
+            dsn=pg_dsn,
+            key1=k1,
+            key2=k2,
             retry_strategy=FixedInterval(interval_s=0.1),
             health_interval_s=0.5,
         )
@@ -38,12 +41,16 @@ class TestLiveElection:
         """Only one of two locks can be leader at once."""
         k1, k2 = lock_keys
         lock1 = LeaderLock(
-            dsn=pg_dsn, key1=k1, key2=k2,
+            dsn=pg_dsn,
+            key1=k1,
+            key2=k2,
             retry_strategy=FixedInterval(interval_s=0.1),
             health_interval_s=0.5,
         )
         lock2 = LeaderLock(
-            dsn=pg_dsn, key1=k1, key2=k2,
+            dsn=pg_dsn,
+            key1=k1,
+            key2=k2,
             retry_strategy=FixedInterval(interval_s=0.1),
             health_interval_s=0.5,
         )
@@ -52,7 +59,7 @@ class TestLiveElection:
         await lock2.start()
 
         # Wait for one to acquire
-        got1 = await lock1.wait_for_leadership(timeout_s=5.0)
+        await lock1.wait_for_leadership(timeout_s=5.0)
         await asyncio.sleep(0.5)
 
         # Exactly one should be leader
@@ -71,13 +78,17 @@ class TestLiveStepDown:
         """When leader steps down, follower should acquire."""
         k1, k2 = lock_keys
         lock1 = LeaderLock(
-            dsn=pg_dsn, key1=k1, key2=k2,
+            dsn=pg_dsn,
+            key1=k1,
+            key2=k2,
             retry_strategy=FixedInterval(interval_s=0.1),
             health_interval_s=0.5,
             auto_reacquire=False,
         )
         lock2 = LeaderLock(
-            dsn=pg_dsn, key1=k1, key2=k2,
+            dsn=pg_dsn,
+            key1=k1,
+            key2=k2,
             retry_strategy=FixedInterval(interval_s=0.1),
             health_interval_s=0.5,
         )
@@ -110,7 +121,9 @@ class TestLiveCallbacks:
     async def test_callbacks_fire(self, pg_dsn, lock_keys):
         k1, k2 = lock_keys
         lock = LeaderLock(
-            dsn=pg_dsn, key1=k1, key2=k2,
+            dsn=pg_dsn,
+            key1=k1,
+            key2=k2,
             retry_strategy=FixedInterval(interval_s=0.1),
             health_interval_s=0.5,
         )
@@ -152,12 +165,16 @@ class TestLiveHardKillFailover:
         """Kill the leader's backend; the follower should acquire leadership."""
         k1, k2 = lock_keys
         lock1 = LeaderLock(
-            dsn=pg_dsn, key1=k1, key2=k2,
+            dsn=pg_dsn,
+            key1=k1,
+            key2=k2,
             retry_strategy=FixedInterval(interval_s=0.2),
             health_interval_s=0.5,
         )
         lock2 = LeaderLock(
-            dsn=pg_dsn, key1=k1, key2=k2,
+            dsn=pg_dsn,
+            key1=k1,
+            key2=k2,
             retry_strategy=FixedInterval(interval_s=0.2),
             health_interval_s=0.5,
         )
@@ -183,19 +200,25 @@ class TestLiveHardKillFailover:
         """Kill leader, follower takes over, kill again, third takes over."""
         k1, k2 = lock_keys
         lock1 = LeaderLock(
-            dsn=pg_dsn, key1=k1, key2=k2,
+            dsn=pg_dsn,
+            key1=k1,
+            key2=k2,
             retry_strategy=FixedInterval(interval_s=0.2),
             health_interval_s=0.5,
             auto_reacquire=False,  # don't let killed leader compete again
         )
         lock2 = LeaderLock(
-            dsn=pg_dsn, key1=k1, key2=k2,
+            dsn=pg_dsn,
+            key1=k1,
+            key2=k2,
             retry_strategy=FixedInterval(interval_s=0.2),
             health_interval_s=0.5,
             auto_reacquire=False,
         )
         lock3 = LeaderLock(
-            dsn=pg_dsn, key1=k1, key2=k2,
+            dsn=pg_dsn,
+            key1=k1,
+            key2=k2,
             retry_strategy=FixedInterval(interval_s=0.2),
             health_interval_s=0.5,
         )
@@ -245,7 +268,9 @@ class TestLiveGracePeriod:
         lost_events = []
 
         lock = LeaderLock(
-            dsn=pg_dsn, key1=k1, key2=k2,
+            dsn=pg_dsn,
+            key1=k1,
+            key2=k2,
             retry_strategy=FixedInterval(interval_s=0.2),
             health_interval_s=0.5,
             reconnect_grace_s=10.0,  # generous grace window
@@ -276,7 +301,9 @@ class TestLiveGracePeriod:
         lost_events = []
 
         lock1 = LeaderLock(
-            dsn=pg_dsn, key1=k1, key2=k2,
+            dsn=pg_dsn,
+            key1=k1,
+            key2=k2,
             retry_strategy=FixedInterval(interval_s=0.2),
             health_interval_s=0.5,
             reconnect_grace_s=10.0,
@@ -295,7 +322,9 @@ class TestLiveGracePeriod:
         # Immediately start a competitor that will grab the lock
         # while lock1 is reconnecting
         lock2 = LeaderLock(
-            dsn=pg_dsn, key1=k1, key2=k2,
+            dsn=pg_dsn,
+            key1=k1,
+            key2=k2,
             retry_strategy=FixedInterval(interval_s=0.1),
             health_interval_s=0.5,
         )
@@ -317,7 +346,9 @@ class TestLiveGracePeriod:
         lost_events = []
 
         lock = LeaderLock(
-            dsn=pg_dsn, key1=k1, key2=k2,
+            dsn=pg_dsn,
+            key1=k1,
+            key2=k2,
             retry_strategy=FixedInterval(interval_s=0.2),
             health_interval_s=0.5,
             reconnect_grace_s=None,  # no grace
@@ -344,12 +375,16 @@ class TestLiveDifferentKeys:
 
     async def test_different_keys_independent(self, pg_dsn):
         lock1 = LeaderLock(
-            dsn=pg_dsn, key1=99999, key2=1,
+            dsn=pg_dsn,
+            key1=99999,
+            key2=1,
             retry_strategy=FixedInterval(interval_s=0.1),
             health_interval_s=0.5,
         )
         lock2 = LeaderLock(
-            dsn=pg_dsn, key1=99999, key2=2,
+            dsn=pg_dsn,
+            key1=99999,
+            key2=2,
             retry_strategy=FixedInterval(interval_s=0.1),
             health_interval_s=0.5,
         )

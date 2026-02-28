@@ -1,5 +1,6 @@
 import pytest
-from pgleaderlock.errors import PgLeaderLockError, ConnectionError, LockError, ShutdownError
+
+from pgleaderlock.errors import ConnectionError, LockError, PgLeaderLockError, ShutdownError
 
 
 class TestErrorHierarchy:

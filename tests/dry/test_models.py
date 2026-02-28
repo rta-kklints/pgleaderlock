@@ -1,4 +1,5 @@
 import pytest
+
 from pgleaderlock.models import LockState, RetryContext
 
 
